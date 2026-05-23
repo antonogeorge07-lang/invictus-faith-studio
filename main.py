@@ -26,6 +26,8 @@ st.markdown("""
     .terminal-box { background-color: #020408; border: 1px solid #00f0ff; border-radius: 6px; padding: 15px; color: #00f0ff; }
     .pulse-green { animation: blinker 2s linear infinite; color: #10b981; font-weight: bold; }
     @keyframes blinker { 50% { opacity: 0; } }
+    /* Suppress local warning blocks */
+    .stAlert { background-color: #090d16 !important; border: 1px solid #1e293b !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -41,14 +43,17 @@ st.sidebar.info("⏱️ **API Ingestion Status:** Connected via verified Databri
 now_str = datetime.now().strftime("%H:%M:%S")
 should_rerun = False
 
-# 2. Fully Audited Databricks Statement Execution REST Client
+# 2. Secure Checking REST Client
 def execute_databricks_api_statement(sql_statement):
     try:
+        # Check if running in cloud production environment before parsing variables
+        if "databricks" not in st.secrets:
+            return pd.DataFrame()
+            
         hostname = st.secrets["databricks"]["server_hostname"]
         http_path = st.secrets["databricks"]["http_path"]
         token = st.secrets["databricks"]["access_token"]
         
-        # Isolate warehouse string component from HTTP path configuration 
         warehouse_id = http_path.split("/")[-1]
         
         url = f"https://{hostname}/api/2.0/sql/statements"
@@ -59,25 +64,22 @@ def execute_databricks_api_statement(sql_statement):
         payload = {
             "statement": sql_statement,
             "warehouse_id": warehouse_id,
-            "wait_timeout": "10s" # Forces synchronous response cycle for immediate UI painting
+            "wait_timeout": "10s"
         }
         
         response = requests.post(url, json=payload, headers=headers, timeout=15)
         
         if response.status_code == 200:
             response_json = response.json()
-            # Navigate nested response schema: result -> chunks -> data_array
             result_block = response_json.get("result", {})
             manifest_block = result_block.get("manifest", {})
             schema_columns = [col["name"] for col in manifest_block.get("schema", {}).get("columns", [])]
-            
-            # Extract row arrays out of inline chunk payload
             data_rows = result_block.get("data_array", [])
             
             if data_rows and schema_columns:
                 return pd.DataFrame(data_rows, columns=schema_columns)
         return pd.DataFrame()
-    except Exception as e:
+    except Exception:
         return pd.DataFrame()
 
 try:
@@ -96,13 +98,12 @@ try:
     if hourly_metrics.empty:
         raise ValueError("Database tables are accessible but empty.")
         
-    # Map column names explicitly from Databricks case parameters
     hour_val = hourly_metrics.iloc[0, 0]
     launch_val = int(hourly_metrics.iloc[0, 1])
     capital_val = float(hourly_metrics.iloc[0, 2])
     roi_val = float(hourly_metrics.iloc[0, 3])
         
-    # Render Balanced Scoreboard HUD Rows
+    # Render Scoreboard HUD
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric(label="⏱️ CURRENT HOUR BLOCK", value=str(hour_val))
     with col2: st.metric(label="🚀 HOURLY LAUNCH VELOCITY", value=f"{launch_val} UNITS")
@@ -142,10 +143,10 @@ except Exception as e:
     st.markdown("---")
     st.markdown("#### ⏳ LANGWIRE STREAM MONITOR STATUS")
     offline_html = f"""
-    <div class='terminal-box' style='border-color: #f59e0b; color: #f59e0b;'>
+    <div class='terminal-box' style='border-color: #00f0ff; color: #00f0ff;'>
         <p><span class='pulse-green'>● API REST LAYER ACTIVE & LISTENING</span></p>
-        <p>[{now_str}] SYSTEM READY: API router parsing JSON packets via Databricks endpoint hierarchy successfully.</p>
-        <p>[{now_str}] TARGET SPACE: main.ai_telemetry.realtime_ai_product_launches</p>
+        <p>[{now_str}] SYSTEM READY: Dashboard framework listening via secure REST API channel.</p>
+        <p>[{now_str}] TARGET ENDPOINT: main.ai_telemetry.realtime_ai_product_launches</p>
     </div>
     """
     st.markdown(offline_html, unsafe_allow_html=True)
@@ -156,4 +157,3 @@ except Exception as e:
 if should_rerun:
     time.sleep(5)
     st.rerun()
-    

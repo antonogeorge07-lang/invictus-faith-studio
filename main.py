@@ -75,6 +75,9 @@ st.sidebar.info("System queries automatically parse data structures and recalcul
 
 now_str = datetime.now().strftime("%H:%M:%S")
 
+# Initialize streaming lock flag
+should_rerun = False
+
 try:
     # 3. CORE HOURLY METRICS QUERY (Includes Aggregated ROI Logic)
     hourly_analytics_query = """
@@ -90,6 +93,9 @@ try:
     """
     hourly_metrics = run_lakehouse_query(hourly_analytics_query)
     
+    if hourly_metrics.empty:
+        raise ValueError("Database table initialized but contains no data logs yet.")
+        
     # 4. HOURLY SCOREBOARD HUD RENDER (4-Column Layout for ROI Integration)
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -121,9 +127,13 @@ try:
     """
     detailed_df = run_lakehouse_query(detailed_hourly_query)
     st.dataframe(detailed_df, use_container_width=True, hide_index=True)
+    
+    # Active table data verified, set refresh loop flag to true
+    if feed_active:
+        should_rerun = True
 
 except Exception as e:
-    # Safe Inception Offline Placeholder UI Block
+    # Safe Inception Offline Placeholder UI Block (No internal code loops here!)
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric(label="⏱️ CURRENT HOUR BLOCK", value="INITIALIZING")
     with col2: st.metric(label="🚀 HOURLY LAUNCH VELOCITY", value="0 UNITS")
@@ -134,14 +144,18 @@ except Exception as e:
     st.markdown("#### ⏳ LANGWIRE STREAM MONITOR STATUS")
     offline_html = f"""
     <div class='terminal-box' style='border-color: #f59e0b; color: #f59e0b;'>
-        <p><span class='pulse-green'>● ENGINE PRIMED & LISTENING</span> // Target: main.ai_telemetry.realtime_ai_product_launches</p>
-        <p>[{now_str}] SYSTEM READY: Waiting for telemetry streams incorporating Langwire financial allocations and LangChain optimization metrics.</p>
-        <p>[{now_str}] ARCHITECTURE NOTE: When streaming via your Databricks notebooks, ensure your JSON parser includes the `realized_roi_percentage` metric field. The interface will automatically group it and compile the mathematical averages for each hourly workspace node.</p>
+        <p><span class='pulse-green'>● ENGINE PRIMED & LISTENING</span> // Target Node Link Connected</p>
+        <p>[{now_str}] SYSTEM READY: Dashboard framework successfully initialized on cloud servers.</p>
+        <p>[{now_str}] STATUS: Awaiting streaming metrics from your active Databricks pipeline table.</p>
     </div>
     """
     st.markdown(offline_html, unsafe_allow_html=True)
+    
+    # Add a quick structural manual reload button to break out of the hanging spinner state
+    if st.button("🛰️ RE-CHECK LAKEHOUSE AGGREGATES"):
+        st.rerun()
 
-# 6. Automatic Auto-Rerun Sync Hook Loop (Runs check every 5 seconds)
-if feed_active:
+# 6. Safe High-Frequency Execution Loop Trigger
+if should_rerun:
     time.sleep(5)
     st.rerun()

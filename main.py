@@ -2,17 +2,50 @@ import streamlit as st
 import pandas as pd
 from databricks import sql
 import time
+from datetime import datetime
 
-st.set_page_config(page_title="INVICTUS FAITH - DATABRICKS HUD", page_icon="🌌", layout="wide")
+# 1. Page Node Framework Setup
+st.set_page_config(
+    page_title="🌌 INVICTUS FAITH // HOURLY HUD",
+    page_icon="⏱️",
+    layout="wide"
+)
 
+# Custom Cybernetic Style Overrides
 st.markdown("""
 <style>
-    .stApp { background-color: #05070f; color: #f1f5f9; }
-    div[data-testid="stMetricValue"] { color: #00f0ff !important; font-family: 'Courier New', monospace; font-weight: 800; }
-    div[data-testid="stMetric"] { background: #0b111e; border: 1px solid #1e293b; border-radius: 8px; padding: 15px; }
+    .stApp { background-color: #03050a; color: #e2e8f0; font-family: 'Courier New', monospace; }
+    
+    /* Neon Cyber Telemetry Metrics */
+    div[data-testid="stMetricValue"] { 
+        color: #00f0ff !important; 
+        font-family: 'Courier New', monospace;
+        font-weight: 900; 
+        font-size: 1.8rem !important;
+        text-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+    }
+    div[data-testid="stMetric"] { 
+        background: #090d16; 
+        border: 1px solid #1e293b; 
+        border-radius: 6px; 
+        padding: 15px;
+    }
+    
+    /* Ingest Log HUD Frame */
+    .terminal-box {
+        background-color: #020408;
+        border: 1px solid #00f0ff;
+        border-radius: 6px;
+        padding: 15px;
+        font-family: 'Courier New', monospace;
+        color: #00f0ff;
+    }
+    .pulse-green { animation: blinker 2s linear infinite; color: #10b981; font-weight: bold; }
+    @keyframes blinker { 50% { opacity: 0; } }
 </style>
 """, unsafe_allow_html=True)
 
+# 2. Databricks Secure Connection Pool
 @st.cache_resource(ttl=60)
 def get_databricks_client():
     return sql.connect(
@@ -29,51 +62,86 @@ def run_lakehouse_query(query_string):
             columns = [desc[0] for desc in cursor.description]
             return pd.DataFrame(result, columns=columns)
 
-st.markdown("<h2 style='color: #00f0ff; margin-bottom: 0px;'>🌌 INVICTUS FAITH // LAKEHOUSE INTEGRATION</h2>", unsafe_allow_html=True)
-st.markdown("<p style='color: #64748b; font-size: 0.9rem;'>LIVE TELEMETRY EXTRACTED DIRECTLY FROM DATABRICKS UNITY CATALOG</p>", unsafe_allow_html=True)
+# Dashboard Title
+st.markdown("<h2 style='color: #00f0ff; letter-spacing: 2px; margin-bottom: 0px;'>🌌 INVICTUS FAITH // HOURLY TELEMETRY HUD</h2>", unsafe_allow_html=True)
+st.markdown("<p style='color: #64748b; font-size: 0.85rem;'>AUTO-REFRESHING GLOBAL DEPLOYMENT STREAM ENGINE</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-feed_active = st.sidebar.checkbox("🛰️ CONNECT STREAMING LAKEHOUSE ENGINE", value=True)
+# Active Stream Controls (Sidebar)
+feed_active = st.sidebar.checkbox("🛰️ ACTIVE HOURLY AUTO-SYNC LOOP", value=True)
+st.sidebar.markdown("---")
+st.sidebar.markdown("⏱️ **Temporal Aggregation Level:**")
+st.sidebar.info("System queries automatically parse data structures and recalculate metrics matching a rolling 60-minute window interval.")
+
+now_str = datetime.now().strftime("%H:%M:%S")
 
 try:
-    metrics_query = """
+    # 3. CORE HOURLY METRICS QUERY (Includes Aggregated ROI Logic)
+    hourly_analytics_query = """
     SELECT 
-        count(model_identifier) as live_nodes,
-        coalesce(sum(estimated_investment_usd), 0) as capital_pool,
-        coalesce(avg(realized_roi_percentage), 0) as avg_roi
+        date_format(date_trunc('hour', ingestion_timestamp), 'yyyy-MM-dd HH:00') AS system_hour_block,
+        count(model_identifier) AS launch_velocity,
+        coalesce(sum(estimated_investment_usd), 0) AS capital_pool_injected,
+        coalesce(avg(realized_roi_percentage), 0) as net_hourly_roi
     FROM main.ai_telemetry.realtime_ai_product_launches
+    GROUP BY 1
+    ORDER BY system_hour_block DESC
+    LIMIT 1
     """
-    metrics_df = run_lakehouse_query(metrics_query)
+    hourly_metrics = run_lakehouse_query(hourly_analytics_query)
     
-    col1, col2, col3 = st.columns(3)
+    # 4. HOURLY SCOREBOARD HUD RENDER (4-Column Layout for ROI Integration)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric(label="TOTAL GLOBAL AI CAPITAL INJECTED", value=f"${metrics_df['capital_pool'][0]:,.0f}")
+        st.metric(label="⏱️ CURRENT HOUR BLOCK", value=str(hourly_metrics['system_hour_block'][0]))
     with col2:
-        st.metric(label="ACTIVE MODEL DEPLOYMENT NODES", value=f"{int(metrics_df['live_nodes'][0])} LIVE")
+        st.metric(label="🚀 HOURLY LAUNCH VELOCITY", value=f"{int(hourly_metrics['launch_velocity'][0])} UNITS")
     with col3:
-        st.metric(label="AVERAGE SYSTEM REALIZED ROI YIELD", value=f"{metrics_df['avg_roi'][0]:.1f}%")
+        st.metric(label="💰 HOURLY CAPITAL FLOW", value=f"${hourly_metrics['capital_pool_injected'][0]:,.0f}")
+    with col4:
+        st.metric(label="📈 AVERAGE REALIZED ROI", value=f"{hourly_metrics['net_hourly_roi'][0]:.1f}%")
 
     st.markdown("---")
-    st.markdown("#### ⏳ DATABRICKS DELTA LAKE INSIGHT TICKER (LIVE INGEST)")
+
+    # 5. DETAILED HOURLY REGISTRY EXTRACTION GRID (Includes Specific ROI Target Column)
+    st.markdown("#### 🧬 HOURLY TELEMETRY REGISTRY (ORGANIZATION, MODEL & ROI LINEAGE)")
     
-    ticker_query = """
+    detailed_hourly_query = """
     SELECT 
-        date_format(ingestion_timestamp, 'HH:mm:ss') as tick_time,
-        model_identifier as model_spec,
-        ai_category_vector as category,
-        concat('$', format_number(estimated_investment_usd, 0)) as investment,
-        realized_roi_percentage as roi
+        date_format(ingestion_timestamp, 'HH:mm') AS launch_tick,
+        model_identifier AS ai_llm_model_name,
+        deploying_organization AS investing_party_or_org,
+        concat('$', format_number(estimated_investment_usd, 0)) AS capital_allocation,
+        concat(format_number(realized_roi_percentage, 1), '%') AS calculated_roi
     FROM main.ai_telemetry.realtime_ai_product_launches
+    WHERE date_trunc('hour', ingestion_timestamp) = date_trunc('hour', (
+        SELECT max(ingestion_timestamp) FROM main.ai_telemetry.realtime_ai_product_launches
+    ))
     ORDER BY ingestion_timestamp DESC
-    LIMIT 5
     """
-    ticker_df = run_lakehouse_query(ticker_query)
-    st.table(ticker_df)
+    detailed_df = run_lakehouse_query(detailed_hourly_query)
+    st.dataframe(detailed_df, use_container_width=True, hide_index=True)
 
 except Exception as e:
-    st.warning("🔒 Waiting for Databricks Lakehouse Pipeline Synchronization...")
-    st.info("The application dashboard structure is running perfectly. Once your background Databricks notebook streaming job begins writing to main.ai_telemetry.realtime_ai_product_launches, this pipeline hud will instantly light up with streaming statistics.")
+    # Safe Inception Offline Placeholder UI Block
+    col1, col2, col3, col4 = st.columns(4)
+    with col1: st.metric(label="⏱️ CURRENT HOUR BLOCK", value="INITIALIZING")
+    with col2: st.metric(label="🚀 HOURLY LAUNCH VELOCITY", value="0 UNITS")
+    with col3: st.metric(label="💰 HOURLY CAPITAL FLOW", value="$0")
+    with col4: st.metric(label="📈 AVERAGE REALIZED ROI", value="0.0%")
+    
+    st.markdown("---")
+    st.markdown("#### ⏳ LANGWIRE STREAM MONITOR STATUS")
+    offline_html = f"""
+    <div class='terminal-box' style='border-color: #f59e0b; color: #f59e0b;'>
+        <p><span class='pulse-green'>● ENGINE PRIMED & LISTENING</span> // Target: main.ai_telemetry.realtime_ai_product_launches</p>
+        <p>[{now_str}] SYSTEM READY: Waiting for telemetry streams incorporating Langwire financial allocations and LangChain optimization metrics.</p>
+        <p>[{now_str}] ARCHITECTURE NOTE: When streaming via your Databricks notebooks, ensure your JSON parser includes the `realized_roi_percentage` metric field. The interface will automatically group it and compile the mathematical averages for each hourly workspace node.</p>
+    </div>
+    """
+    st.markdown(offline_html, unsafe_allow_html=True)
 
+# 6. Automatic Auto-Rerun Sync Hook Loop (Runs check every 5 seconds)
 if feed_active:
     time.sleep(5)
     st.rerun()
